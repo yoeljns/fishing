@@ -37,11 +37,22 @@ Built with Next.js 15 (App Router) + Vercel Postgres. Hosted on Vercel.
 
 1. Push the repository to GitHub.
 2. Import the project on Vercel.
-3. Attach a Postgres database in the Storage tab.
+3. Attach a Postgres database in the Storage tab (Neon works — its `POSTGRES_URL` env var is consumed directly).
 4. Set environment variables in the Vercel dashboard:
    - `APP_PASSWORD` — the password you'll use to log in
    - `SESSION_SECRET` — a long random string (rotate to log yourself out)
-5. After the first deploy, pull the prod env locally (`vercel env pull .env.local`) and run `npm run migrate && npm run seed` once to initialize the schema.
+   - `SETUP_TOKEN` — a random string used once to initialize the database schema
+5. After the first successful deploy, initialize the schema and seed species by hitting:
+   ```
+   https://<your-deployment>.vercel.app/api/setup?token=<SETUP_TOKEN>
+   ```
+   This is idempotent — safe to re-run. It returns JSON with the row counts.
+
+   Alternative for local setup against the prod DB:
+   ```bash
+   vercel env pull .env.local
+   npm run migrate && npm run seed
+   ```
 
 ## How it works
 

@@ -24,6 +24,24 @@ const optionalNumber = z
     return n;
   });
 
+const optionalSignedNumber = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .transform((v, ctx) => {
+      if (!v) return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < min || n > max) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Must be between ${min} and ${max}`,
+        });
+        return z.NEVER;
+      }
+      return n;
+    });
+
 export const catchFormSchema = z.object({
   species_name: z.string().trim().min(1, "Species is required").max(120),
   length_value: optionalNumber,
@@ -34,6 +52,8 @@ export const catchFormSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
   location: optionalString,
+  latitude: optionalSignedNumber(-90, 90),
+  longitude: optionalSignedNumber(-180, 180),
   bait: optionalString,
   notes: optionalString,
 });

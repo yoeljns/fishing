@@ -16,6 +16,8 @@ export async function listCatches(
       weight_kg::float8 AS weight_kg,
       to_char(caught_on, 'YYYY-MM-DD') AS caught_on,
       location,
+      latitude::float8 AS latitude,
+      longitude::float8 AS longitude,
       bait,
       notes,
       created_at,
@@ -47,6 +49,8 @@ export async function getCatch(id: number): Promise<CatchRow | null> {
       weight_kg::float8 AS weight_kg,
       to_char(caught_on, 'YYYY-MM-DD') AS caught_on,
       location,
+      latitude::float8 AS latitude,
+      longitude::float8 AS longitude,
       bait,
       notes,
       created_at,
@@ -65,6 +69,8 @@ export type CatchInput = {
   weight_kg: number | null;
   caught_on: string;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   bait: string | null;
   notes: string | null;
 };
@@ -73,12 +79,14 @@ export async function insertCatch(input: CatchInput): Promise<number> {
   const { rows } = await sql<{ id: number }>`
     INSERT INTO catches (
       species_id, species_name_snapshot, length_cm, weight_kg,
-      caught_on, location, bait, notes
+      caught_on, location, latitude, longitude, bait, notes
     )
     VALUES (
       ${input.species_id}, ${input.species_name_snapshot},
       ${input.length_cm}, ${input.weight_kg},
-      ${input.caught_on}, ${input.location}, ${input.bait}, ${input.notes}
+      ${input.caught_on}, ${input.location},
+      ${input.latitude}, ${input.longitude},
+      ${input.bait}, ${input.notes}
     )
     RETURNING id
   `;
@@ -97,6 +105,8 @@ export async function updateCatch(
       weight_kg = ${input.weight_kg},
       caught_on = ${input.caught_on},
       location = ${input.location},
+      latitude = ${input.latitude},
+      longitude = ${input.longitude},
       bait = ${input.bait},
       notes = ${input.notes},
       updated_at = NOW()

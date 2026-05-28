@@ -23,6 +23,8 @@ export type CatchRow = {
   weight_kg: number | null;
   caught_on: string;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   bait: string | null;
   notes: string | null;
   created_at: string;

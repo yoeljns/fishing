@@ -50,7 +50,13 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
-      <body className="min-h-screen flex flex-col">
+      <body
+        className="min-h-screen flex flex-col"
+        style={{
+          paddingLeft: "env(safe-area-inset-left)",
+          paddingRight: "env(safe-area-inset-right)",
+        }}
+      >
         <a href="#main" className="skip-link">
           Skip to content
         </a>
@@ -58,7 +64,11 @@ export default async function RootLayout({
           {authed ? <Nav /> : null}
           <main
             id="main"
-            className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 pb-24 md:pb-6"
+            className="flex-1 max-w-5xl w-full mx-auto px-4 py-6"
+            style={{
+              paddingBottom:
+                "calc(env(safe-area-inset-bottom) + 6rem)",
+            }}
           >
             {children}
           </main>

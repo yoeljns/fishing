@@ -67,12 +67,20 @@ async function runSchema(): Promise<void> {
       weight_kg             NUMERIC(6,3),
       caught_on             DATE NOT NULL,
       location              TEXT,
+      latitude              NUMERIC(9,6),
+      longitude             NUMERIC(9,6),
       bait                  TEXT,
       notes                 TEXT,
       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(
+    `ALTER TABLE catches ADD COLUMN IF NOT EXISTS latitude NUMERIC(9,6)`,
+  );
+  await pool.query(
+    `ALTER TABLE catches ADD COLUMN IF NOT EXISTS longitude NUMERIC(9,6)`,
+  );
   await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_catches_caught_on ON catches (caught_on DESC)`,
   );

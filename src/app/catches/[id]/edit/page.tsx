@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCatch } from "@/lib/catches";
 import { listSpecies } from "@/lib/species";
 import { CatchForm } from "@/components/CatchForm";
+import { CatchMapPreview } from "@/components/CatchMapPreview";
 import { updateCatchAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +21,12 @@ export default async function EditCatchPage({
   if (!catchRow) notFound();
 
   const action = updateCatchAction.bind(null, id);
+  const hasCoords =
+    catchRow.latitude != null && catchRow.longitude != null;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Edit catch
         </h1>
@@ -35,6 +38,12 @@ export default async function EditCatchPage({
         </Link>
       </div>
       <CatchForm species={species} action={action} initial={catchRow} />
+      {hasCoords ? (
+        <CatchMapPreview
+          lat={Number(catchRow.latitude)}
+          lon={Number(catchRow.longitude)}
+        />
+      ) : null}
     </div>
   );
 }

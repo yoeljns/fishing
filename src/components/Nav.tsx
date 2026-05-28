@@ -9,6 +9,7 @@ import { Logo } from "./Logo";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/catches", label: "Catches" },
+  { href: "/forecast", label: "Forecast" },
   { href: "/species", label: "Species" },
   { href: "/stats", label: "Stats" },
 ];
@@ -21,7 +22,10 @@ export function Nav() {
 
   return (
     <>
-      <nav className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-slate-950/60">
+      <nav
+        className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:dark:bg-slate-950/60"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-6">
             <Link
@@ -68,8 +72,9 @@ export function Nav() {
       <nav
         aria-label="Primary"
         className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-4 max-w-5xl mx-auto">
+        <div className="grid grid-cols-5 max-w-5xl mx-auto">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -125,6 +130,13 @@ function MobileIcon({ name, active }: { name: string; active: boolean }) {
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M3 12 C 6 5, 16 5, 18 12 L 22 9 L 21 12 L 22 15 L 18 12 C 16 19, 6 19, 3 12 Z" />
         <circle cx="8" cy="11" r="0.8" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (name === "/forecast") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M16 18a4 4 0 0 0 0-8 6 6 0 0 0-11.5 1.5A4 4 0 0 0 6 18z" />
       </svg>
     );
   }

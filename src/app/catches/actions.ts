@@ -22,6 +22,8 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
     weight_unit: formData.get("weight_unit") ?? "kg",
     caught_on: formData.get("caught_on"),
     location: formData.get("location") ?? undefined,
+    latitude: formData.get("latitude") ?? undefined,
+    longitude: formData.get("longitude") ?? undefined,
     bait: formData.get("bait") ?? undefined,
     notes: formData.get("notes") ?? undefined,
   });
@@ -51,6 +53,8 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
     weight_kg,
     caught_on: parsed.caught_on,
     location: parsed.location,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
     bait: parsed.bait,
     notes: parsed.notes,
   };

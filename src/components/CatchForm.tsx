@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import type { CatchRow, Species } from "@/lib/types";
 import { cmToIn, kgToLb } from "@/lib/units";
 import { useUnits } from "./UnitToggle";
+import { reverseGeocodeAction } from "@/app/catches/geo-actions";
+import { showToast } from "./Toast";
 
 type Props = {
   species: Species[];
@@ -14,6 +16,19 @@ type Props = {
 function todayISO(): string {
   const d = new Date();
   return d.toISOString().slice(0, 10);
+}
+
+function formatCoord(value: number, kind: "lat" | "lon"): string {
+  const abs = Math.abs(value).toFixed(4);
+  const dir =
+    kind === "lat"
+      ? value >= 0
+        ? "N"
+        : "S"
+      : value >= 0
+        ? "E"
+        : "W";
+  return `${abs}° ${dir}`;
 }
 
 const inputClass =
@@ -35,6 +50,54 @@ export function CatchForm({ species, action, initial }: Props) {
   const [speciesQuery, setSpeciesQuery] = useState(
     initial?.species_name_snapshot ?? "",
   );
+
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    initial?.latitude != null && initial?.longitude != null
+      ? { lat: Number(initial.latitude), lon: Number(initial.longitude) }
+      : null,
+  );
+  const [geoState, setGeoState] = useState<"idle" | "locating" | "naming">(
+    "idle",
+  );
+  const [, startTransition] = useTransition();
+  const manualCoordsRef = useRef(false);
+
+  const useMyLocation = () => {
+    if (!("geolocation" in navigator)) {
+      showToast("Geolocation isn't available on this device", "error");
+      return;
+    }
+    setGeoState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setCoords({ lat: latitude, lon: longitude });
+        setGeoState("naming");
+        startTransition(async () => {
+          const result = await reverseGeocodeAction(latitude, longitude);
+          if (result?.short_name && !manualCoordsRef.current) {
+            setLocation(result.short_name);
+          }
+          setGeoState("idle");
+        });
+      },
+      (err) => {
+        setGeoState("idle");
+        if (err.code === err.PERMISSION_DENIED) {
+          showToast("Location access denied", "error");
+        } else {
+          showToast("Couldn't get your location", "error");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
+  const clearCoords = () => {
+    setCoords(null);
+    manualCoordsRef.current = false;
+  };
 
   const initialLengthValue = useMemo(() => {
     if (initial?.length_cm == null) return "";
@@ -170,33 +233,96 @@ export function CatchForm({ species, action, initial }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass} htmlFor="caught_on">
-            Date
-          </label>
-          <input
-            id="caught_on"
-            type="date"
-            name="caught_on"
-            required
-            defaultValue={initial?.caught_on ?? todayISO()}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="location">
-            Location
-          </label>
+      <div>
+        <label className={labelClass} htmlFor="caught_on">
+          Date
+        </label>
+        <input
+          id="caught_on"
+          type="date"
+          name="caught_on"
+          required
+          defaultValue={initial?.caught_on ?? todayISO()}
+          className={`sm:max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="location">
+          Location
+        </label>
+        <div className="flex gap-2">
           <input
             id="location"
             type="text"
             name="location"
-            defaultValue={initial?.location ?? ""}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
             placeholder="River, lake, beach…"
-            className={inputClass}
+            className={`flex-1 ${inputClass}`}
           />
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={geoState !== "idle"}
+            className="px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 hover:border-brand-500 transition-colors duration-150 disabled:opacity-60 flex items-center gap-1.5"
+            aria-label="Use my current location"
+          >
+            <PinIcon />
+            <span className="hidden sm:inline">
+              {geoState === "locating"
+                ? "Locating…"
+                : geoState === "naming"
+                  ? "Naming…"
+                  : "Use my location"}
+            </span>
+          </button>
         </div>
+
+        {coords ? (
+          <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+              <PinIcon small />
+              {formatCoord(coords.lat, "lat")} ·{" "}
+              {formatCoord(coords.lon, "lon")}
+            </span>
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lon}#map=14/${coords.lat}/${coords.lon}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-700 dark:text-brand-400 hover:underline"
+            >
+              View on map →
+            </a>
+            <button
+              type="button"
+              onClick={clearCoords}
+              className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              Clear
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Tap{" "}
+            <span className="inline-flex items-center gap-1 text-brand-700 dark:text-brand-400">
+              <PinIcon small />
+              Use my location
+            </span>{" "}
+            to attach GPS coordinates and auto-name the spot.
+          </p>
+        )}
+
+        <input
+          type="hidden"
+          name="latitude"
+          value={coords?.lat.toFixed(6) ?? ""}
+        />
+        <input
+          type="hidden"
+          name="longitude"
+          value={coords?.lon.toFixed(6) ?? ""}
+        />
       </div>
 
       <div>
@@ -236,5 +362,25 @@ export function CatchForm({ species, action, initial }: Props) {
         </button>
       </div>
     </form>
+  );
+}
+
+function PinIcon({ small }: { small?: boolean }) {
+  const size = small ? 12 : 14;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   );
 }

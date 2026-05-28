@@ -54,7 +54,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none"
+        className="fixed left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none bottom-20 md:bottom-4"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {toasts.map((t) => (
           <div

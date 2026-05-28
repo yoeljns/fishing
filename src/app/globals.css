@@ -38,3 +38,21 @@ body {
 .skip-link {
   @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:rounded-md focus:bg-brand-600 focus:text-white;
 }
+
+.fj-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.leaflet-container {
+  background: #cfdde2;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html.dark .leaflet-container {
+  background: #1e293b;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+}

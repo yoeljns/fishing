@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   type Forecast,
   type ScoredHour,
+  type DaySummary,
+  groupByDay,
   scoreLabel,
 } from "@/lib/forecast";
 
@@ -69,16 +71,50 @@ function findCurrentIndex(scored: ScoredHour[]): number {
   return best;
 }
 
+function formatHour(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function ForecastView({ forecast, scored }: Props) {
+  const days = useMemo(
+    () => groupByDay(scored, forecast.daily),
+    [scored, forecast.daily],
+  );
+
+  const today = days[0];
   const currentIndex = findCurrentIndex(scored);
   const current = scored[currentIndex];
-  const next48 = scored.slice(currentIndex, currentIndex + 48);
   const currentLabel = scoreLabel(current.score);
-  const today = forecast.daily[0];
 
-  const [selected, setSelected] = useState<number>(currentIndex);
-  const selectedHour = scored[selected];
+  const todayKey = today?.date ?? scored[0].iso.slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState<string>(todayKey);
+  const selectedDay = days.find((d) => d.date === selectedDate) ?? today;
+  const isToday = selectedDay?.date === todayKey;
+
+  const [selectedHourIso, setSelectedHourIso] = useState<string>(
+    isToday ? current.iso : selectedDay?.hours[10]?.iso ?? current.iso,
+  );
+  const selectedHour =
+    selectedDay?.hours.find((h) => h.iso === selectedHourIso) ??
+    selectedDay?.hours[0] ??
+    current;
   const selectedLabel = scoreLabel(selectedHour.score);
+
+  const onPickDay = (date: string) => {
+    setSelectedDate(date);
+    const day = days.find((d) => d.date === date);
+    if (!day) return;
+    if (date === todayKey) {
+      setSelectedHourIso(current.iso);
+    } else if (day.bestWindow) {
+      setSelectedHourIso(day.bestWindow.startIso);
+    } else {
+      setSelectedHourIso(day.hours[10]?.iso ?? day.hours[0].iso);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -101,116 +137,286 @@ export function ForecastView({ forecast, scored }: Props) {
               {Math.round(current.wind_kmh)} km/h wind ·{" "}
               {Math.round(current.pressure_hpa)} hPa
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {today ? moonName(today.moon_phase) : ""}
-              {today ? (
-                <>
-                  {" · "}
-                  Sunrise{" "}
-                  {new Date(today.sunrise).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
-                  · Sunset{" "}
-                  {new Date(today.sunset).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </>
-              ) : null}
-            </div>
+            {today ? (
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {moonName(today.moon_phase)} · Sunrise{" "}
+                {formatHour(today.sunrise)} · Sunset {formatHour(today.sunset)}
+              </div>
+            ) : null}
           </div>
           <ScoreDial score={current.score} tone={currentLabel.tone} />
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Next 48 hours
-          </h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Tap a bar
-          </span>
-        </div>
-        <div className="overflow-x-auto -mx-1 px-1 pb-2">
-          <div className="flex items-end gap-1 min-w-max" role="list">
-            {next48.map((h, idx) => {
-              const realIdx = currentIndex + idx;
-              const tone = scoreLabel(h.score).tone;
-              const t = new Date(h.iso);
-              const hour = t.getHours();
-              const isSelected = realIdx === selected;
-              const showHourLabel = hour % 6 === 0;
-              return (
-                <button
-                  key={h.iso}
-                  type="button"
-                  onClick={() => setSelected(realIdx)}
-                  aria-label={`Score ${h.score} at ${t.toLocaleString()}`}
-                  className={`flex flex-col items-center gap-1 transition-transform duration-100 ${
-                    isSelected ? "scale-110" : ""
+      <DayStrip
+        days={days}
+        selectedDate={selectedDate}
+        todayKey={todayKey}
+        onPick={onPickDay}
+      />
+
+      {selectedDay ? (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {selectedDay.weekday},{" "}
+                {new Date(selectedDay.date + "T12:00:00").toLocaleDateString(
+                  [],
+                  { month: "short", day: "numeric" },
+                )}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Peak{" "}
+                <span
+                  className={`font-semibold ${
+                    toneText(scoreLabel(selectedDay.peakScore).tone)
                   }`}
                 >
-                  <div
-                    className={`w-3 sm:w-4 rounded-sm ${toneColor(tone)} ${
-                      isSelected
-                        ? "ring-2 ring-slate-900 dark:ring-white"
-                        : "opacity-90 hover:opacity-100"
-                    }`}
-                    style={{ height: `${Math.max(6, h.score * 0.9)}px` }}
-                  />
-                  <span
-                    className={`text-[10px] tabular-nums ${
-                      showHourLabel
-                        ? "text-slate-600 dark:text-slate-400"
-                        : "text-transparent"
-                    }`}
-                  >
-                    {hour}
-                  </span>
-                </button>
-              );
+                  {selectedDay.peakScore}
+                </span>{" "}
+                · Avg {selectedDay.avgScore}
+                {selectedDay.bestWindow ? (
+                  <>
+                    {" · Best "}
+                    {formatHour(selectedDay.bestWindow.startIso)}–
+                    {formatHour(selectedDay.bestWindow.endIso)}
+                  </>
+                ) : null}
+              </p>
+              {selectedDay.sunrise && selectedDay.sunset ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {moonName(selectedDay.moon_phase)} · Sunrise{" "}
+                  {formatHour(selectedDay.sunrise)} · Sunset{" "}
+                  {formatHour(selectedDay.sunset)}
+                </p>
+              ) : null}
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Tap a bar
+            </span>
+          </div>
+
+          <HourChart
+            hours={selectedDay.hours}
+            selectedIso={selectedHourIso}
+            onSelect={setSelectedHourIso}
+            sunrise={selectedDay.sunrise}
+            sunset={selectedDay.sunset}
+          />
+
+          <HourDetail hour={selectedHour} />
+        </div>
+      ) : null}
+
+      <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+        Weather from Open-Meteo · scored locally from pressure trend, wind,
+        moon phase, time of day, and cloud cover.
+      </p>
+    </div>
+  );
+}
+
+function DayStrip({
+  days,
+  selectedDate,
+  todayKey,
+  onPick,
+}: {
+  days: DaySummary[];
+  selectedDate: string;
+  todayKey: string;
+  onPick: (date: string) => void;
+}) {
+  return (
+    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-2 min-w-max pb-1">
+        {days.map((d) => {
+          const isSelected = d.date === selectedDate;
+          const isToday = d.date === todayKey;
+          const tone = scoreLabel(d.peakScore).tone;
+          return (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => onPick(d.date)}
+              aria-pressed={isSelected}
+              className={`shrink-0 rounded-xl p-3 text-left transition-all duration-150 border min-w-[88px] ${
+                isSelected
+                  ? "bg-brand-600 text-white border-brand-600 shadow-md"
+                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-brand-500"
+              }`}
+            >
+              <div
+                className={`text-[10px] uppercase tracking-wider ${
+                  isSelected
+                    ? "text-brand-100"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                {isToday ? "Today" : d.weekday}
+              </div>
+              <div
+                className={`text-xl font-bold tabular-nums ${
+                  isSelected ? "text-white" : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {d.dayOfMonth}
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${toneColor(tone)}`}
+                  aria-hidden
+                />
+                <span
+                  className={`text-xs font-medium ${
+                    isSelected
+                      ? "text-white"
+                      : "text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {d.peakScore}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HourChart({
+  hours,
+  selectedIso,
+  onSelect,
+  sunrise,
+  sunset,
+}: {
+  hours: ScoredHour[];
+  selectedIso: string;
+  onSelect: (iso: string) => void;
+  sunrise?: string;
+  sunset?: string;
+}) {
+  const sunriseHour = sunrise ? new Date(sunrise).getHours() : -1;
+  const sunsetHour = sunset ? new Date(sunset).getHours() : -1;
+  return (
+    <div className="overflow-x-auto -mx-1 px-1 pb-2 mt-3">
+      <div className="flex items-end gap-1 min-w-max" role="list">
+        {hours.map((h) => {
+          const tone = scoreLabel(h.score).tone;
+          const t = new Date(h.iso);
+          const hour = t.getHours();
+          const isSelected = h.iso === selectedIso;
+          const showHourLabel = hour % 3 === 0;
+          const isSunrise = hour === sunriseHour;
+          const isSunset = hour === sunsetHour;
+          return (
+            <button
+              key={h.iso}
+              type="button"
+              onClick={() => onSelect(h.iso)}
+              aria-label={`Score ${h.score} at ${t.toLocaleString()}`}
+              className={`flex flex-col items-center gap-1 transition-transform duration-100 ${
+                isSelected ? "scale-110" : ""
+              }`}
+            >
+              <div className="text-[9px] h-3 leading-3">
+                {isSunrise ? "☀" : isSunset ? "🌙" : ""}
+              </div>
+              <div
+                className={`w-3.5 sm:w-4 rounded-sm ${toneColor(tone)} ${
+                  isSelected
+                    ? "ring-2 ring-slate-900 dark:ring-white"
+                    : "opacity-90 hover:opacity-100"
+                }`}
+                style={{ height: `${Math.max(6, h.score * 0.9)}px` }}
+              />
+              <span
+                className={`text-[10px] tabular-nums ${
+                  showHourLabel
+                    ? "text-slate-600 dark:text-slate-400"
+                    : "text-transparent"
+                }`}
+              >
+                {hour}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HourDetail({ hour }: { hour: ScoredHour }) {
+  const label = scoreLabel(hour.score);
+  const rows = [
+    { label: "Pressure trend", value: hour.breakdown.pressure, weight: "30%" },
+    { label: "Wind", value: hour.breakdown.wind, weight: "25%" },
+    { label: "Moon phase", value: hour.breakdown.moon, weight: "20%" },
+    { label: "Time of day", value: hour.breakdown.time_of_day, weight: "15%" },
+    { label: "Cloud cover", value: hour.breakdown.cloud, weight: "10%" },
+  ];
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div>
+          <div className="text-slate-500 dark:text-slate-400">When</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {new Date(hour.iso).toLocaleString([], {
+              weekday: "short",
+              hour: "2-digit",
+              minute: "2-digit",
             })}
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <div className="text-slate-500 dark:text-slate-400">When</div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {new Date(selectedHour.iso).toLocaleString([], {
-                weekday: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
-          </div>
-          <div>
-            <div className="text-slate-500 dark:text-slate-400">Score</div>
-            <div className={`text-sm font-medium ${toneText(selectedLabel.tone)}`}>
-              {selectedHour.score} · {selectedLabel.label}
-            </div>
-          </div>
-          <div>
-            <div className="text-slate-500 dark:text-slate-400">Wind</div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {Math.round(selectedHour.wind_kmh)} km/h
-            </div>
-          </div>
-          <div>
-            <div className="text-slate-500 dark:text-slate-400">Pressure</div>
-            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {Math.round(selectedHour.pressure_hpa)} hPa
-            </div>
+        <div>
+          <div className="text-slate-500 dark:text-slate-400">Score</div>
+          <div className={`text-sm font-medium ${toneText(label.tone)}`}>
+            {hour.score} · {label.label}
           </div>
         </div>
-        <BreakdownBars breakdown={selectedHour.breakdown} />
+        <div>
+          <div className="text-slate-500 dark:text-slate-400">Wind</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {Math.round(hour.wind_kmh)} km/h
+          </div>
+        </div>
+        <div>
+          <div className="text-slate-500 dark:text-slate-400">Pressure</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {Math.round(hour.pressure_hpa)} hPa
+          </div>
+        </div>
       </div>
-
-      <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-        Weather data from Open-Meteo · scored locally from pressure trend, wind,
-        moon phase, time of day, and cloud cover.
-      </p>
+      <details className="mt-3 group">
+        <summary className="text-xs text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none">
+          Why this score
+        </summary>
+        <div className="mt-2 space-y-1.5">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center gap-2 text-xs">
+              <div className="w-28 sm:w-32 text-slate-600 dark:text-slate-400 shrink-0">
+                {r.label}
+                <span className="text-slate-400 dark:text-slate-500 ml-1">
+                  ({r.weight})
+                </span>
+              </div>
+              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-500"
+                  style={{ width: `${r.value}%` }}
+                />
+              </div>
+              <div className="w-8 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                {r.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -260,47 +466,5 @@ function ScoreDial({ score, tone }: { score: number; tone: string }) {
         style={{ transition: "stroke-dashoffset 400ms" }}
       />
     </svg>
-  );
-}
-
-function BreakdownBars({
-  breakdown,
-}: {
-  breakdown: ScoredHour["breakdown"];
-}) {
-  const rows = [
-    { label: "Pressure trend", value: breakdown.pressure, weight: "30%" },
-    { label: "Wind", value: breakdown.wind, weight: "25%" },
-    { label: "Moon phase", value: breakdown.moon, weight: "20%" },
-    { label: "Time of day", value: breakdown.time_of_day, weight: "15%" },
-    { label: "Cloud cover", value: breakdown.cloud, weight: "10%" },
-  ];
-  return (
-    <details className="mt-3 group">
-      <summary className="text-xs text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none">
-        Why this score
-      </summary>
-      <div className="mt-2 space-y-1.5">
-        {rows.map((r) => (
-          <div key={r.label} className="flex items-center gap-2 text-xs">
-            <div className="w-28 sm:w-32 text-slate-600 dark:text-slate-400 shrink-0">
-              {r.label}
-              <span className="text-slate-400 dark:text-slate-500 ml-1">
-                ({r.weight})
-              </span>
-            </div>
-            <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-brand-500"
-                style={{ width: `${r.value}%` }}
-              />
-            </div>
-            <div className="w-8 text-right tabular-nums text-slate-700 dark:text-slate-300">
-              {r.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </details>
   );
 }

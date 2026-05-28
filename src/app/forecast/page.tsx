@@ -3,6 +3,7 @@ import { listSpeciesWithStats } from "@/lib/species";
 import { fetchForecast, scoreForecast } from "@/lib/forecast";
 import { regionFromCoords, reverseGeocode } from "@/lib/geo";
 import { ForecastLocationBar } from "@/components/ForecastLocationBar";
+import { ForecastMap } from "@/components/ForecastMap";
 import { ForecastView } from "@/components/ForecastView";
 import { LikelySpecies } from "@/components/LikelySpecies";
 import { ForecastEmpty } from "@/components/ForecastEmpty";
@@ -73,6 +74,7 @@ export default async function ForecastPage({
         </p>
       </div>
       <ForecastLocationBar initialLat={lat} initialLon={lon} />
+      <ForecastMap lat={lat} lon={lon} />
       {forecast && scored.length > 0 ? (
         <ForecastView
           forecast={forecast}

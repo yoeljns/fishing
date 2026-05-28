@@ -70,7 +70,7 @@ export async function fetchForecast(
     hourly:
       "temperature_2m,wind_speed_10m,pressure_msl,cloud_cover,is_day",
     daily: "sunrise,sunset",
-    forecast_days: "3",
+    forecast_days: "7",
     wind_speed_unit: "kmh",
     timezone: "auto",
   });
@@ -216,4 +216,80 @@ export function scoreLabel(score: number): { label: string; tone: string } {
   if (score >= 50) return { label: "Fair", tone: "fair" };
   if (score >= 35) return { label: "Slow", tone: "slow" };
   return { label: "Poor", tone: "poor" };
+}
+
+export type DaySummary = {
+  date: string;
+  weekday: string;
+  dayOfMonth: number;
+  hours: ScoredHour[];
+  peakScore: number;
+  avgScore: number;
+  bestWindow: { startIso: string; endIso: string; avgScore: number } | null;
+  sunrise: string;
+  sunset: string;
+  moon_phase: number;
+};
+
+export function groupByDay(
+  scored: ScoredHour[],
+  daily: DailyMeta[],
+): DaySummary[] {
+  const map = new Map<string, ScoredHour[]>();
+  for (const h of scored) {
+    const dateKey = h.iso.slice(0, 10);
+    const arr = map.get(dateKey);
+    if (arr) arr.push(h);
+    else map.set(dateKey, [h]);
+  }
+  const dayMeta = new Map(daily.map((d) => [d.date, d]));
+  const out: DaySummary[] = [];
+  for (const [date, hours] of map) {
+    if (hours.length === 0) continue;
+    const meta = dayMeta.get(date);
+    const d = new Date(date + "T12:00:00");
+    const peakScore = hours.reduce(
+      (acc, h) => Math.max(acc, h.score),
+      0,
+    );
+    const avgScore = Math.round(
+      hours.reduce((acc, h) => acc + h.score, 0) / hours.length,
+    );
+    out.push({
+      date,
+      weekday: d.toLocaleDateString([], { weekday: "short" }),
+      dayOfMonth: d.getDate(),
+      hours,
+      peakScore,
+      avgScore,
+      bestWindow: bestWindowFor(hours),
+      sunrise: meta?.sunrise ?? "",
+      sunset: meta?.sunset ?? "",
+      moon_phase: meta?.moon_phase ?? 0.5,
+    });
+  }
+  return out.sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+function bestWindowFor(
+  hours: ScoredHour[],
+): DaySummary["bestWindow"] {
+  if (hours.length < 3) return null;
+  const window = 3;
+  let bestStart = 0;
+  let bestAvg = -1;
+  for (let i = 0; i + window <= hours.length; i++) {
+    let s = 0;
+    for (let j = 0; j < window; j++) s += hours[i + j].score;
+    const avg = s / window;
+    if (avg > bestAvg) {
+      bestAvg = avg;
+      bestStart = i;
+    }
+  }
+  return {
+    startIso: hours[bestStart].iso,
+    endIso: hours[bestStart + window - 1].iso,
+    avgScore: Math.round(bestAvg),
+  };
 }

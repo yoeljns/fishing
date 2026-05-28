@@ -1,7 +1,11 @@
 "use server";
 
 import { requireAuth } from "@/lib/session";
-import { forwardGeocode } from "@/lib/geo";
+import {
+  forwardGeocode,
+  forwardGeocodeMulti,
+  type GeocodeCandidate,
+} from "@/lib/geo";
 
 export async function forwardGeocodeAction(
   query: string,
@@ -10,4 +14,13 @@ export async function forwardGeocodeAction(
   const q = query.trim();
   if (q.length < 2) return null;
   return forwardGeocode(q);
+}
+
+export async function forwardGeocodeMultiAction(
+  query: string,
+): Promise<GeocodeCandidate[]> {
+  await requireAuth();
+  const q = query.trim();
+  if (q.length < 2) return [];
+  return forwardGeocodeMulti(q, 6);
 }

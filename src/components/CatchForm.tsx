@@ -6,6 +6,7 @@ import { cmToIn, kgToLb } from "@/lib/units";
 import { useUnits } from "./UnitToggle";
 import { reverseGeocodeAction } from "@/app/catches/geo-actions";
 import { showToast } from "./Toast";
+import { MapPicker } from "./MapPicker";
 
 type Props = {
   species: Species[];
@@ -60,6 +61,7 @@ export function CatchForm({ species, action, initial }: Props) {
   const [geoState, setGeoState] = useState<"idle" | "locating" | "naming">(
     "idle",
   );
+  const [mapOpen, setMapOpen] = useState(false);
   const [, startTransition] = useTransition();
   const manualCoordsRef = useRef(false);
 
@@ -286,14 +288,13 @@ export function CatchForm({ species, action, initial }: Props) {
               {formatCoord(coords.lat, "lat")} ·{" "}
               {formatCoord(coords.lon, "lon")}
             </span>
-            <a
-              href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lon}#map=14/${coords.lat}/${coords.lon}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setMapOpen((v) => !v)}
               className="text-brand-700 dark:text-brand-400 hover:underline"
             >
-              View on map →
-            </a>
+              {mapOpen ? "Hide map" : "Pick on map"}
+            </button>
             <button
               type="button"
               onClick={clearCoords}
@@ -303,15 +304,40 @@ export function CatchForm({ species, action, initial }: Props) {
             </button>
           </div>
         ) : (
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Tap{" "}
-            <span className="inline-flex items-center gap-1 text-brand-700 dark:text-brand-400">
-              <PinIcon small />
-              Use my location
-            </span>{" "}
-            to attach GPS coordinates and auto-name the spot.
-          </p>
+          <div className="mt-2 flex items-center gap-3 flex-wrap text-xs">
+            <button
+              type="button"
+              onClick={() => setMapOpen((v) => !v)}
+              className="text-brand-700 dark:text-brand-400 hover:underline"
+            >
+              {mapOpen ? "Hide map" : "Pick on map"}
+            </button>
+            <span className="text-slate-500 dark:text-slate-400">
+              or tap{" "}
+              <span className="inline-flex items-center gap-1 text-brand-700 dark:text-brand-400">
+                <PinIcon small /> Use my location
+              </span>
+            </span>
+          </div>
         )}
+
+        {mapOpen ? (
+          <div className="mt-3">
+            <MapPicker
+              lat={coords?.lat ?? 0}
+              lon={coords?.lon ?? 0}
+              zoom={coords ? 11 : 2}
+              onChange={(lat, lon) => {
+                setCoords({ lat, lon });
+                manualCoordsRef.current = true;
+              }}
+              height={260}
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Tap the map (or drag the pin) to set the spot.
+            </p>
+          </div>
+        ) : null}
 
         <input
           type="hidden"

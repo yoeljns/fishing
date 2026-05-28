@@ -62,30 +62,78 @@ export async function reverseGeocode(
   }
 }
 
-export async function forwardGeocode(
+export type GeocodeCandidate = {
+  lat: number;
+  lon: number;
+  display_name: string;
+  short_name: string;
+  type: string;
+  category: string;
+};
+
+type NominatimSearchResult = {
+  lat: string;
+  lon: string;
+  display_name: string;
+  name?: string;
+  type?: string;
+  category?: string;
+  addresstype?: string;
+  address?: NominatimResponse["address"];
+};
+
+function buildShortName(r: NominatimSearchResult): string {
+  const a = r.address ?? {};
+  const water =
+    a.body_of_water ?? a.water ?? a.lake ?? a.river ?? a.sea ?? a.bay;
+  const place =
+    r.name ??
+    water ??
+    a.beach ??
+    a.village ??
+    a.town ??
+    a.city ??
+    a.municipality ??
+    a.county ??
+    a.state;
+  const parts = [place, a.state ?? a.county, a.country].filter(
+    (v, i, arr) => v && arr.indexOf(v) === i,
+  );
+  return parts.join(", ") || r.display_name;
+}
+
+export async function forwardGeocodeMulti(
   query: string,
-): Promise<{ lat: number; lon: number; display_name: string } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=1&accept-language=en`;
+  limit = 6,
+): Promise<GeocodeCandidate[]> {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1&accept-language=en`;
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
       next: { revalidate: 60 * 60 * 24 },
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as Array<{
-      lat: string;
-      lon: string;
-      display_name: string;
-    }>;
-    if (data.length === 0) return null;
-    return {
-      lat: Number(data[0].lat),
-      lon: Number(data[0].lon),
-      display_name: data[0].display_name,
-    };
+    if (!res.ok) return [];
+    const data = (await res.json()) as NominatimSearchResult[];
+    return data.map((r) => ({
+      lat: Number(r.lat),
+      lon: Number(r.lon),
+      display_name: r.display_name,
+      short_name: buildShortName(r),
+      type: r.type ?? r.addresstype ?? "",
+      category: r.category ?? "",
+    }));
   } catch {
-    return null;
+    return [];
   }
+}
+
+export async function forwardGeocode(
+  query: string,
+): Promise<{ lat: number; lon: number; display_name: string } | null> {
+  const results = await forwardGeocodeMulti(query, 1);
+  if (results.length === 0) return null;
+  const r = results[0];
+  return { lat: r.lat, lon: r.lon, display_name: r.display_name };
 }
 
 const REGION_BOXES: Array<{

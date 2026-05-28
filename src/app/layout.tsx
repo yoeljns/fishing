@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { isAuthenticated } from "@/lib/session";
@@ -13,8 +13,30 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Fishing Journal",
+  title: {
+    default: "Fishing Journal",
+    template: "%s · Fishing Journal",
+  },
   description: "Personal fishing catch journal",
+  applicationName: "Fishing Journal",
+  appleWebApp: {
+    capable: true,
+    title: "Fishing",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
 };
 
 export default async function RootLayout({
@@ -40,13 +62,8 @@ export default async function RootLayout({
           >
             {children}
           </main>
-          {authed ? <MobileNavSpacer /> : null}
         </ToastProvider>
       </body>
     </html>
   );
-}
-
-function MobileNavSpacer() {
-  return <div aria-hidden className="h-0 md:hidden" />;
 }

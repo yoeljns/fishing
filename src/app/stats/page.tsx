@@ -7,7 +7,9 @@ export default async function StatsPage() {
   const stats = await getStats();
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Stats</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">
+        Stats
+      </h1>
       <StatsView stats={stats} />
     </div>
   );

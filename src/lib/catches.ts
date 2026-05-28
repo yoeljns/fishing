@@ -1,7 +1,12 @@
 import { sql } from "./db";
 import type { CatchRow } from "./types";
 
-export async function listCatches(limit = 200): Promise<CatchRow[]> {
+export type SortMode = "date" | "length" | "weight";
+
+export async function listCatches(
+  limit = 200,
+  sortMode: SortMode = "date",
+): Promise<CatchRow[]> {
   const { rows } = await sql<CatchRow>`
     SELECT
       id,
@@ -19,6 +24,16 @@ export async function listCatches(limit = 200): Promise<CatchRow[]> {
     ORDER BY caught_on DESC, id DESC
     LIMIT ${limit}
   `;
+  if (sortMode === "length") {
+    return [...rows].sort(
+      (a, b) => (b.length_cm ?? -Infinity) - (a.length_cm ?? -Infinity),
+    );
+  }
+  if (sortMode === "weight") {
+    return [...rows].sort(
+      (a, b) => (b.weight_kg ?? -Infinity) - (a.weight_kg ?? -Infinity),
+    );
+  }
   return rows;
 }
 
@@ -96,15 +111,21 @@ export async function deleteCatch(id: number): Promise<void> {
 export type Stats = {
   total_catches: number;
   distinct_species: number;
+  this_month: number;
   longest: { species_name_snapshot: string; length_cm: number } | null;
   heaviest: { species_name_snapshot: string; weight_kg: number } | null;
 };
 
 export async function getStats(): Promise<Stats> {
-  const totals = await sql<{ total: number; distinct: number }>`
+  const totals = await sql<{
+    total: number;
+    distinct: number;
+    this_month: number;
+  }>`
     SELECT
       COUNT(*)::int AS total,
-      COUNT(DISTINCT species_id)::int AS distinct
+      COUNT(DISTINCT species_id)::int AS distinct,
+      COUNT(*) FILTER (WHERE caught_on >= (CURRENT_DATE - INTERVAL '30 days'))::int AS this_month
     FROM catches
   `;
 
@@ -127,6 +148,7 @@ export async function getStats(): Promise<Stats> {
   return {
     total_catches: totals.rows[0]?.total ?? 0,
     distinct_species: totals.rows[0]?.distinct ?? 0,
+    this_month: totals.rows[0]?.this_month ?? 0,
     longest: longest.rows[0] ?? null,
     heaviest: heaviest.rows[0] ?? null,
   };

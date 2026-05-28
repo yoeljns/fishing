@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState, useTransition } from "react";
 import type { SpeciesWithStats } from "@/lib/types";
-import { formatLength, formatWeight } from "@/lib/units";
-import { useUnits } from "./UnitToggle";
+import { SpeciesRow } from "./SpeciesRow";
 
 type Filter = "all" | "caught" | "not_caught";
 
@@ -14,203 +13,219 @@ type Props = {
 };
 
 export function SpeciesChecklist({ species, waterTypes, regions }: Props) {
-  const units = useUnits();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [waterType, setWaterType] = useState<string | "any">("any");
   const [selectedRegions, setSelectedRegions] = useState<Set<string>>(
     new Set(),
   );
+  const [, startTransition] = useTransition();
+
+  const deferredSearch = useDeferredValue(search);
+  const deferredFilter = useDeferredValue(filter);
+  const deferredWaterType = useDeferredValue(waterType);
+  const deferredRegions = useDeferredValue(selectedRegions);
 
   const toggleRegion = (r: string) => {
-    setSelectedRegions((prev) => {
-      const next = new Set(prev);
-      if (next.has(r)) next.delete(r);
-      else next.add(r);
-      return next;
+    startTransition(() => {
+      setSelectedRegions((prev) => {
+        const next = new Set(prev);
+        if (next.has(r)) next.delete(r);
+        else next.add(r);
+        return next;
+      });
     });
   };
 
+  const setFilterT = (f: Filter) => startTransition(() => setFilter(f));
+  const setWaterTypeT = (w: string | "any") =>
+    startTransition(() => setWaterType(w));
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return species.filter((s) => {
       if (q) {
         const inName = s.common_name.toLowerCase().includes(q);
         const inAlias = s.aliases.some((a) => a.toLowerCase().includes(q));
-        if (!inName && !inAlias) return false;
+        const inSci = s.scientific_name?.toLowerCase().includes(q) ?? false;
+        if (!inName && !inAlias && !inSci) return false;
       }
-      if (filter === "caught" && s.catch_count === 0) return false;
-      if (filter === "not_caught" && s.catch_count > 0) return false;
-      if (waterType !== "any" && s.water_type !== waterType) return false;
-      if (selectedRegions.size > 0) {
-        const matches = s.regions.some((r) => selectedRegions.has(r));
+      if (deferredFilter === "caught" && s.catch_count === 0) return false;
+      if (deferredFilter === "not_caught" && s.catch_count > 0) return false;
+      if (deferredWaterType !== "any" && s.water_type !== deferredWaterType)
+        return false;
+      if (deferredRegions.size > 0) {
+        const matches = s.regions.some((r) => deferredRegions.has(r));
         if (!matches) return false;
       }
       return true;
     });
-  }, [species, search, filter, waterType, selectedRegions]);
+  }, [species, deferredSearch, deferredFilter, deferredWaterType, deferredRegions]);
+
+  const showingStale =
+    deferredSearch !== search ||
+    deferredFilter !== filter ||
+    deferredWaterType !== waterType ||
+    deferredRegions !== selectedRegions;
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search species…"
-          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3 shadow-sm">
+        <div className="relative">
+          <SearchIcon />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, alias, or scientific…"
+            aria-label="Search species"
+            className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors duration-150"
+          />
+        </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs uppercase tracking-wide text-slate-500">
-            Show
-          </span>
+        <ChipGroup label="Show">
           {(["all", "caught", "not_caught"] as Filter[]).map((f) => (
-            <button
+            <Chip
               key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`px-2 py-1 text-xs rounded-md border ${
-                filter === f
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-white text-slate-700 border-slate-300"
-              }`}
-            >
-              {f === "all" ? "All" : f === "caught" ? "Caught" : "Not caught"}
-            </button>
+              active={filter === f}
+              onClick={() => setFilterT(f)}
+              label={f === "all" ? "All" : f === "caught" ? "Caught" : "Not caught"}
+            />
           ))}
-        </div>
+        </ChipGroup>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs uppercase tracking-wide text-slate-500">
-            Water
-          </span>
-          <button
-            type="button"
-            onClick={() => setWaterType("any")}
-            className={`px-2 py-1 text-xs rounded-md border ${
-              waterType === "any"
-                ? "bg-brand-600 text-white border-brand-600"
-                : "bg-white text-slate-700 border-slate-300"
-            }`}
-          >
-            Any
-          </button>
+        <ChipGroup label="Water">
+          <Chip
+            active={waterType === "any"}
+            onClick={() => setWaterTypeT("any")}
+            label="Any"
+          />
           {waterTypes.map((w) => (
-            <button
+            <Chip
               key={w}
-              type="button"
-              onClick={() => setWaterType(w)}
-              className={`px-2 py-1 text-xs rounded-md border ${
-                waterType === w
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-white text-slate-700 border-slate-300"
-              }`}
-            >
-              {w}
-            </button>
+              active={waterType === w}
+              onClick={() => setWaterTypeT(w)}
+              label={w}
+            />
           ))}
-        </div>
+        </ChipGroup>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs uppercase tracking-wide text-slate-500">
-            Region
-          </span>
-          {regions.map((r) => {
-            const on = selectedRegions.has(r);
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => toggleRegion(r)}
-                className={`px-2 py-1 text-xs rounded-md border ${
-                  on
-                    ? "bg-brand-600 text-white border-brand-600"
-                    : "bg-white text-slate-700 border-slate-300"
-                }`}
-              >
-                {r}
-              </button>
-            );
-          })}
+        <ChipGroup label="Region">
+          {regions.map((r) => (
+            <Chip
+              key={r}
+              active={selectedRegions.has(r)}
+              onClick={() => toggleRegion(r)}
+              label={r}
+            />
+          ))}
           {selectedRegions.size > 0 ? (
             <button
               type="button"
-              onClick={() => setSelectedRegions(new Set())}
-              className="text-xs text-slate-500 hover:text-slate-700 underline"
+              onClick={() => startTransition(() => setSelectedRegions(new Set()))}
+              className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline"
             >
               Clear
             </button>
           ) : null}
-        </div>
+        </ChipGroup>
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+        <span>
+          Showing {filtered.length} of {species.length}
+        </span>
+        {showingStale ? <span className="italic">filtering…</span> : null}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-lg p-8 text-center text-slate-600">
-          No species match these filters.
-        </div>
+        <EmptyState />
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {filtered.map((s) => {
-            const caught = s.catch_count > 0;
-            return (
-              <li
-                key={s.id}
-                className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${
-                  caught
-                    ? "bg-brand-50 border-brand-500"
-                    : "bg-white border-slate-200"
-                }`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-block w-5 h-5 rounded border text-center text-xs leading-5 ${
-                        caught
-                          ? "bg-brand-600 border-brand-600 text-white"
-                          : "border-slate-300"
-                      }`}
-                      aria-hidden
-                    >
-                      {caught ? "✓" : ""}
-                    </span>
-                    <h3 className="font-medium truncate">{s.common_name}</h3>
-                  </div>
-                  {s.scientific_name ? (
-                    <p className="text-xs italic text-slate-500 ml-7">
-                      {s.scientific_name}
-                    </p>
-                  ) : null}
-                  {s.aliases.length > 0 ? (
-                    <p className="text-xs text-slate-500 ml-7 mt-1">
-                      Also: {s.aliases.join(", ")}
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-slate-500 ml-7 mt-1">
-                    {s.water_type}
-                    {s.regions.length > 0 ? ` · ${s.regions.join(", ")}` : ""}
-                  </p>
-                  {caught ? (
-                    <p className="text-xs text-brand-700 ml-7 mt-1">
-                      Caught {s.catch_count}×
-                      {s.max_length_cm != null
-                        ? ` · best ${formatLength(s.max_length_cm, units)}`
-                        : ""}
-                      {s.max_weight_kg != null
-                        ? ` / ${formatWeight(s.max_weight_kg, units)}`
-                        : ""}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-500 ml-7 mt-1">
-                      Not caught yet
-                    </p>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+        <ul
+          className={`grid grid-cols-1 sm:grid-cols-2 gap-2 transition-opacity duration-150 ${
+            showingStale ? "opacity-70" : ""
+          }`}
+        >
+          {filtered.map((s) => (
+            <SpeciesRow key={s.id} s={s} />
+          ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function ChipGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="flex flex-wrap gap-2 items-center"
+    >
+      <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 shrink-0">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-2.5 py-1 text-xs rounded-md border transition-colors duration-150 ${
+        active
+          ? "bg-brand-600 text-white border-brand-600"
+          : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-8 text-center text-slate-600 dark:text-slate-400">
+      <p className="text-base">No species match these filters.</p>
+      <p className="text-xs mt-1">Try clearing a filter or broadening your search.</p>
     </div>
   );
 }

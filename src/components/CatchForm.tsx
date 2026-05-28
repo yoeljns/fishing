@@ -16,6 +16,15 @@ function todayISO(): string {
   return d.toISOString().slice(0, 10);
 }
 
+const inputClass =
+  "w-full px-3 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors duration-150";
+
+const selectClass =
+  "px-2 py-2 border border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 rounded-md transition-colors duration-150";
+
+const labelClass =
+  "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+
 export function CatchForm({ species, action, initial }: Props) {
   const preferredUnits = useUnits();
   const initialLengthUnit = preferredUnits === "imperial" ? "in" : "cm";
@@ -71,12 +80,16 @@ export function CatchForm({ species, action, initial }: Props) {
   );
 
   return (
-    <form action={action} className="space-y-5 bg-white border border-slate-200 rounded-lg p-6">
+    <form
+      action={action}
+      className="space-y-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 shadow-sm"
+    >
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
+        <label className={labelClass} htmlFor="species_name">
           Species
         </label>
         <input
+          id="species_name"
           type="text"
           name="species_name"
           required
@@ -85,7 +98,7 @@ export function CatchForm({ species, action, initial }: Props) {
           value={speciesQuery}
           onChange={(e) => setSpeciesQuery(e.target.value)}
           placeholder="Start typing… or enter a custom species"
-          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className={inputClass}
         />
         <datalist id="species-list">
           {filteredEntries.map((e, i) => (
@@ -93,7 +106,7 @@ export function CatchForm({ species, action, initial }: Props) {
           ))}
         </datalist>
         {!exactMatch && speciesQuery.trim().length > 0 ? (
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Not in the list — will be saved as a custom species.
           </p>
         ) : null}
@@ -101,24 +114,26 @@ export function CatchForm({ species, action, initial }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className={labelClass} htmlFor="length_value">
             Length
           </label>
           <div className="flex gap-2">
             <input
+              id="length_value"
               type="number"
               step="0.1"
               min="0"
               name="length_value"
               defaultValue={initialLengthValue}
               placeholder="e.g. 42"
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={`flex-1 ${inputClass}`}
             />
             <select
               name="length_unit"
               value={lengthUnit}
               onChange={(e) => setLengthUnit(e.target.value as "cm" | "in")}
-              className="px-2 py-2 border border-slate-300 rounded-md bg-white"
+              className={selectClass}
+              aria-label="Length unit"
             >
               <option value="cm">cm</option>
               <option value="in">in</option>
@@ -127,24 +142,26 @@ export function CatchForm({ species, action, initial }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className={labelClass} htmlFor="weight_value">
             Weight
           </label>
           <div className="flex gap-2">
             <input
+              id="weight_value"
               type="number"
               step="0.01"
               min="0"
               name="weight_value"
               defaultValue={initialWeightValue}
               placeholder="e.g. 0.8"
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={`flex-1 ${inputClass}`}
             />
             <select
               name="weight_unit"
               value={weightUnit}
               onChange={(e) => setWeightUnit(e.target.value as "kg" | "lb")}
-              className="px-2 py-2 border border-slate-300 rounded-md bg-white"
+              className={selectClass}
+              aria-label="Weight unit"
             >
               <option value="kg">kg</option>
               <option value="lb">lb</option>
@@ -155,61 +172,65 @@ export function CatchForm({ species, action, initial }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className={labelClass} htmlFor="caught_on">
             Date
           </label>
           <input
+            id="caught_on"
             type="date"
             name="caught_on"
             required
             defaultValue={initial?.caught_on ?? todayISO()}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className={labelClass} htmlFor="location">
             Location
           </label>
           <input
+            id="location"
             type="text"
             name="location"
             defaultValue={initial?.location ?? ""}
             placeholder="River, lake, beach…"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className={inputClass}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
+        <label className={labelClass} htmlFor="bait">
           Bait / lure
         </label>
         <input
+          id="bait"
           type="text"
           name="bait"
           defaultValue={initial?.bait ?? ""}
           placeholder="Worm, spinner, fly pattern…"
-          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className={inputClass}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
+        <label className={labelClass} htmlFor="notes">
           Notes
         </label>
         <textarea
+          id="notes"
           name="notes"
           rows={3}
           defaultValue={initial?.notes ?? ""}
           placeholder="Weather, conditions, technique…"
-          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className={inputClass}
         />
       </div>
 
       <div className="flex justify-end gap-2">
         <button
           type="submit"
-          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-md"
+          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium rounded-md transition-colors duration-150 shadow-sm hover:shadow"
         >
           {initial ? "Save changes" : "Log catch"}
         </button>

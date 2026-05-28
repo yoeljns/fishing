@@ -33,11 +33,19 @@ export function useUnits(): UnitSystem {
 export function UnitToggle() {
   const units = useUnits();
   return (
-    <div className="inline-flex rounded-md border border-slate-300 bg-white text-xs overflow-hidden">
+    <div
+      className="inline-flex rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs overflow-hidden"
+      role="group"
+      aria-label="Units"
+    >
       <button
         type="button"
         onClick={() => setStoredUnits("metric")}
-        className={`px-2 py-1 ${units === "metric" ? "bg-brand-600 text-white" : "text-slate-700"}`}
+        className={`px-2 py-1 transition-colors duration-150 ${
+          units === "metric"
+            ? "bg-brand-600 text-white"
+            : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+        }`}
         aria-pressed={units === "metric"}
       >
         cm / kg
@@ -45,7 +53,11 @@ export function UnitToggle() {
       <button
         type="button"
         onClick={() => setStoredUnits("imperial")}
-        className={`px-2 py-1 ${units === "imperial" ? "bg-brand-600 text-white" : "text-slate-700"}`}
+        className={`px-2 py-1 transition-colors duration-150 ${
+          units === "imperial"
+            ? "bg-brand-600 text-white"
+            : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+        }`}
         aria-pressed={units === "imperial"}
       >
         in / lb

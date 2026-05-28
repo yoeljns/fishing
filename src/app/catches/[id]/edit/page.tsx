@@ -23,11 +23,13 @@ export default async function EditCatchPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Edit catch</h1>
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          Edit catch
+        </h1>
         <Link
           href="/catches"
-          className="text-sm text-slate-600 hover:text-slate-900"
+          className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-150"
         >
           Cancel
         </Link>

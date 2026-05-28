@@ -15,13 +15,35 @@ export default async function SpeciesPage() {
 
   const caughtCount = species.filter((s) => s.catch_count > 0).length;
   const totalCount = species.length;
+  const pct = totalCount === 0 ? 0 : Math.round((caughtCount / totalCount) * 100);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Species checklist</h1>
-        <div className="text-sm text-slate-600">
-          {caughtCount} of {totalCount} caught
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Species checklist
+          </h1>
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {caughtCount}
+            </span>{" "}
+            of {totalCount} caught
+            <span className="ml-2 text-xs text-slate-500 dark:text-slate-500">
+              ({pct}%)
+            </span>
+          </div>
+        </div>
+        <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all duration-500"
+            style={{ width: `${pct}%` }}
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Species caught"
+          />
         </div>
       </div>
       <SpeciesChecklist

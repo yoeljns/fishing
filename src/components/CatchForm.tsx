@@ -45,16 +45,29 @@ export function CatchForm({ species, action, initial }: Props) {
     ).toFixed(2);
   }, [initial, initialWeightUnit]);
 
-  const filteredSpecies = useMemo(() => {
-    const q = speciesQuery.trim().toLowerCase();
-    if (!q) return species.slice(0, 8);
-    return species
-      .filter((s) => s.common_name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [species, speciesQuery]);
+  type PickerEntry = { value: string; label: string };
 
-  const exactMatch = species.some(
-    (s) => s.common_name.toLowerCase() === speciesQuery.trim().toLowerCase(),
+  const allEntries = useMemo<PickerEntry[]>(() => {
+    const out: PickerEntry[] = [];
+    for (const s of species) {
+      out.push({ value: s.common_name, label: s.common_name });
+      for (const a of s.aliases) {
+        out.push({ value: a, label: `${a} — ${s.common_name}` });
+      }
+    }
+    return out;
+  }, [species]);
+
+  const filteredEntries = useMemo(() => {
+    const q = speciesQuery.trim().toLowerCase();
+    if (!q) return allEntries.slice(0, 10);
+    return allEntries
+      .filter((e) => e.value.toLowerCase().includes(q))
+      .slice(0, 10);
+  }, [allEntries, speciesQuery]);
+
+  const exactMatch = allEntries.some(
+    (e) => e.value.toLowerCase() === speciesQuery.trim().toLowerCase(),
   );
 
   return (
@@ -75,8 +88,8 @@ export function CatchForm({ species, action, initial }: Props) {
           className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
         <datalist id="species-list">
-          {filteredSpecies.map((s) => (
-            <option key={s.id} value={s.common_name} />
+          {filteredEntries.map((e, i) => (
+            <option key={`${e.value}-${i}`} value={e.value} label={e.label} />
           ))}
         </datalist>
         {!exactMatch && speciesQuery.trim().length > 0 ? (

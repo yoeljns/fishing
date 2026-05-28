@@ -3,7 +3,7 @@ import type { Species, SpeciesWithStats } from "./types";
 
 export async function listSpecies(): Promise<Species[]> {
   const { rows } = await sql<Species>`
-    SELECT id, common_name, scientific_name, family, water_type, regions, is_custom
+    SELECT id, common_name, scientific_name, family, water_type, regions, aliases, is_custom
     FROM species
     ORDER BY common_name ASC
   `;
@@ -19,6 +19,7 @@ export async function listSpeciesWithStats(): Promise<SpeciesWithStats[]> {
       s.family,
       s.water_type,
       s.regions,
+      s.aliases,
       s.is_custom,
       COUNT(c.id)::int AS catch_count,
       MAX(c.length_cm)::float8 AS max_length_cm,
@@ -35,9 +36,13 @@ export async function findSpeciesByName(
   name: string,
 ): Promise<Species | null> {
   const { rows } = await sql<Species>`
-    SELECT id, common_name, scientific_name, family, water_type, regions, is_custom
+    SELECT id, common_name, scientific_name, family, water_type, regions, aliases, is_custom
     FROM species
     WHERE LOWER(common_name) = LOWER(${name})
+       OR EXISTS (
+         SELECT 1 FROM unnest(aliases) AS a
+         WHERE LOWER(a) = LOWER(${name})
+       )
     LIMIT 1
   `;
   return rows[0] ?? null;
@@ -49,11 +54,12 @@ export async function upsertCustomSpecies(name: string): Promise<Species> {
   if (existing) return existing;
 
   const regionsLit = pgTextArrayLiteral(["Custom"]);
+  const aliasesLit = pgTextArrayLiteral([]);
   const { rows } = await sql<Species>`
-    INSERT INTO species (common_name, scientific_name, family, water_type, regions, is_custom)
-    VALUES (${trimmed}, NULL, NULL, 'Unknown', ${regionsLit}::text[], TRUE)
+    INSERT INTO species (common_name, scientific_name, family, water_type, regions, aliases, is_custom)
+    VALUES (${trimmed}, NULL, NULL, 'Unknown', ${regionsLit}::text[], ${aliasesLit}::text[], TRUE)
     ON CONFLICT (common_name) DO UPDATE SET common_name = EXCLUDED.common_name
-    RETURNING id, common_name, scientific_name, family, water_type, regions, is_custom
+    RETURNING id, common_name, scientific_name, family, water_type, regions, aliases, is_custom
   `;
   return rows[0];
 }

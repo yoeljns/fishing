@@ -15,12 +15,15 @@ async function runSetup() {
       family          TEXT,
       water_type      TEXT NOT NULL,
       regions         TEXT[] NOT NULL DEFAULT '{}',
+      aliases         TEXT[] NOT NULL DEFAULT '{}',
       is_custom       BOOLEAN NOT NULL DEFAULT FALSE,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE species ADD COLUMN IF NOT EXISTS aliases TEXT[] NOT NULL DEFAULT '{}'`;
   await sql`CREATE INDEX IF NOT EXISTS idx_species_water_type ON species (water_type)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_species_regions ON species USING GIN (regions)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_species_aliases ON species USING GIN (aliases)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS catches (
@@ -43,14 +46,16 @@ async function runSetup() {
   let seeded = 0;
   for (const s of SPECIES_SEED) {
     const regionsLit = pgTextArrayLiteral(s.regions);
+    const aliasesLit = pgTextArrayLiteral(s.aliases);
     await sql`
-      INSERT INTO species (common_name, scientific_name, family, water_type, regions, is_custom)
-      VALUES (${s.common_name}, ${s.scientific_name}, ${s.family}, ${s.water_type}, ${regionsLit}::text[], FALSE)
+      INSERT INTO species (common_name, scientific_name, family, water_type, regions, aliases, is_custom)
+      VALUES (${s.common_name}, ${s.scientific_name}, ${s.family}, ${s.water_type}, ${regionsLit}::text[], ${aliasesLit}::text[], FALSE)
       ON CONFLICT (common_name) DO UPDATE SET
         scientific_name = EXCLUDED.scientific_name,
         family          = EXCLUDED.family,
         water_type      = EXCLUDED.water_type,
-        regions         = EXCLUDED.regions
+        regions         = EXCLUDED.regions,
+        aliases         = EXCLUDED.aliases
     `;
     seeded++;
   }

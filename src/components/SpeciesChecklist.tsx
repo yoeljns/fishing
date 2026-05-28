@@ -34,7 +34,11 @@ export function SpeciesChecklist({ species, waterTypes, regions }: Props) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return species.filter((s) => {
-      if (q && !s.common_name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const inName = s.common_name.toLowerCase().includes(q);
+        const inAlias = s.aliases.some((a) => a.toLowerCase().includes(q));
+        if (!inName && !inAlias) return false;
+      }
       if (filter === "caught" && s.catch_count === 0) return false;
       if (filter === "not_caught" && s.catch_count > 0) return false;
       if (waterType !== "any" && s.water_type !== waterType) return false;
@@ -175,6 +179,11 @@ export function SpeciesChecklist({ species, waterTypes, regions }: Props) {
                   {s.scientific_name ? (
                     <p className="text-xs italic text-slate-500 ml-7">
                       {s.scientific_name}
+                    </p>
+                  ) : null}
+                  {s.aliases.length > 0 ? (
+                    <p className="text-xs text-slate-500 ml-7 mt-1">
+                      Also: {s.aliases.join(", ")}
                     </p>
                   ) : null}
                   <p className="text-xs text-slate-500 ml-7 mt-1">

@@ -5,6 +5,7 @@ export type Species = {
   family: string | null;
   water_type: string;
   regions: string[];
+  aliases: string[];
   is_custom: boolean;
 };
 
@@ -34,4 +35,5 @@ export type SeedSpecies = {
   family: string;
   water_type: "Freshwater" | "Saltwater" | "Brackish";
   regions: string[];
+  aliases: string[];
 };

@@ -46,7 +46,7 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
 
   return {
     species_id: species.id,
-    species_name_snapshot: species.common_name,
+    species_name_snapshot: trimmedName,
     length_cm,
     weight_kg,
     caught_on: parsed.caught_on,

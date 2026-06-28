@@ -33,6 +33,37 @@ async function runSchema(): Promise<void> {
   const pool = getPool();
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      username      TEXT NOT NULL,
+      display_name  TEXT,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))`,
+  );
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS friendships (
+      id           SERIAL PRIMARY KEY,
+      requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (requester_id, addressee_id)
+    )
+  `);
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships (addressee_id, status)`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships (requester_id, status)`,
+  );
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS species (
       id              SERIAL PRIMARY KEY,
       common_name     TEXT NOT NULL UNIQUE,
@@ -82,10 +113,19 @@ async function runSchema(): Promise<void> {
     `ALTER TABLE catches ADD COLUMN IF NOT EXISTS longitude NUMERIC(9,6)`,
   );
   await pool.query(
+    `ALTER TABLE catches ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`,
+  );
+  await pool.query(
+    `ALTER TABLE catches ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'friends'`,
+  );
+  await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_catches_caught_on ON catches (caught_on DESC)`,
   );
   await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_catches_species_id ON catches (species_id)`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_catches_user_id ON catches (user_id)`,
   );
 
   await pool.query(`

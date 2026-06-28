@@ -9,6 +9,26 @@ export type Species = {
   is_custom: boolean;
 };
 
+export type User = {
+  id: number;
+  username: string;
+  display_name: string | null;
+  created_at: string;
+};
+
+export type Visibility = "private" | "friends" | "public";
+
+export type FriendState =
+  | "self"
+  | "none"
+  | "friends"
+  | "incoming"
+  | "outgoing";
+
+export type FriendUser = User & {
+  catch_count: number;
+};
+
 export type SpeciesWithStats = Species & {
   catch_count: number;
   max_length_cm: number | null;
@@ -17,6 +37,7 @@ export type SpeciesWithStats = Species & {
 
 export type CatchRow = {
   id: number;
+  user_id: number | null;
   species_id: number | null;
   species_name_snapshot: string;
   length_cm: number | null;
@@ -27,6 +48,7 @@ export type CatchRow = {
   longitude: number | null;
   bait: string | null;
   notes: string | null;
+  visibility: Visibility;
   created_at: string;
   updated_at: string;
 };

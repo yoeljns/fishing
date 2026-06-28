@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { isAuthenticated } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
+import { countIncomingRequests } from "@/lib/friends";
 import { Nav } from "@/components/Nav";
 import { ToastProvider } from "@/components/Toast";
 import { themeBootScript } from "@/components/ThemeToggle";
@@ -44,7 +45,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const authed = await isAuthenticated();
+  const user = await getCurrentUser();
+  const pendingCount = user ? await countIncomingRequests(user.id) : 0;
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
@@ -61,7 +63,13 @@ export default async function RootLayout({
           Skip to content
         </a>
         <ToastProvider>
-          {authed ? <Nav /> : null}
+          {user ? (
+            <Nav
+              username={user.username}
+              displayName={user.display_name}
+              pendingCount={pendingCount}
+            />
+          ) : null}
           <main
             id="main"
             className="flex-1 max-w-5xl w-full mx-auto px-4 py-6"

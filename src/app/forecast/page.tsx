@@ -1,5 +1,6 @@
 import { listCatches } from "@/lib/catches";
 import { listSpeciesWithStats } from "@/lib/species";
+import { requireUser } from "@/lib/session";
 import { fetchForecast, scoreForecast } from "@/lib/forecast";
 import { regionFromCoords, reverseGeocode } from "@/lib/geo";
 import { ForecastLocationBar } from "@/components/ForecastLocationBar";
@@ -15,6 +16,7 @@ export default async function ForecastPage({
 }: {
   searchParams: Promise<{ lat?: string; lon?: string; q?: string }>;
 }) {
+  const user = await requireUser();
   const { lat: latParam, lon: lonParam } = await searchParams;
   const queryLat = latParam ? Number(latParam) : NaN;
   const queryLon = lonParam ? Number(lonParam) : NaN;
@@ -23,7 +25,7 @@ export default async function ForecastPage({
   let lon = Number.isFinite(queryLon) ? queryLon : null;
 
   if (lat == null || lon == null) {
-    const recent = await listCatches(5, "date");
+    const recent = await listCatches(user.id, 5, "date");
     const withCoords = recent.find(
       (c) => c.latitude != null && c.longitude != null,
     );
@@ -53,7 +55,7 @@ export default async function ForecastPage({
   const [forecast, place, allSpecies] = await Promise.all([
     fetchForecast(lat, lon),
     reverseGeocode(lat, lon),
-    listSpeciesWithStats(),
+    listSpeciesWithStats(user.id),
   ]);
 
   const region = regionFromCoords(lat, lon);

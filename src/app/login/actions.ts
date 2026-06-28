@@ -5,24 +5,37 @@ import { redirect } from "next/navigation";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
-  checkPassword,
   signSession,
+  verifyPassword,
 } from "@/lib/auth";
+import { getUserWithHash } from "@/lib/users";
+import { loginSchema } from "@/lib/validation";
 
-export async function loginAction(formData: FormData): Promise<void> {
-  const submitted = String(formData.get("password") ?? "");
-  if (!checkPassword(submitted)) {
-    redirect("/login?error=1");
-  }
-  const store = await cookies();
+function setSessionCookie(store: Awaited<ReturnType<typeof cookies>>, userId: number) {
   store.set({
     name: SESSION_COOKIE,
-    value: signSession(),
+    value: signSession(userId),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
-  redirect("/catches");
+}
+
+export async function loginAction(formData: FormData): Promise<void> {
+  const parsed = loginSchema.safeParse({
+    username: formData.get("username"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) redirect("/login?error=1");
+
+  const user = await getUserWithHash(parsed.data.username);
+  if (!user || !(await verifyPassword(parsed.data.password, user.password_hash))) {
+    redirect("/login?error=1");
+  }
+
+  const store = await cookies();
+  setSessionCookie(store, user.id);
+  redirect("/");
 }

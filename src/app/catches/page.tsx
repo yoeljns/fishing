@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listCatches, type SortMode } from "@/lib/catches";
+import { requireUser } from "@/lib/session";
 import { CatchList } from "@/components/CatchList";
 import { CatchesSort } from "@/components/CatchesSort";
 import { Logo } from "@/components/Logo";
@@ -11,10 +12,11 @@ export default async function CatchesPage({
 }: {
   searchParams: Promise<{ sort?: string }>;
 }) {
+  const user = await requireUser();
   const { sort } = await searchParams;
   const sortMode: SortMode =
     sort === "length" || sort === "weight" ? sort : "date";
-  const catches = await listCatches(200, sortMode);
+  const catches = await listCatches(user.id, 200, sortMode);
 
   return (
     <div>

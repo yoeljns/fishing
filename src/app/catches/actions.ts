@@ -8,12 +8,16 @@ import {
   insertCatch,
   updateCatch as dbUpdateCatch,
 } from "@/lib/catches";
-import { requireAuth } from "@/lib/session";
+import { requireUser } from "@/lib/session";
 import { upsertCustomSpecies, findSpeciesByName } from "@/lib/species";
 import { inToCm, lbToKg } from "@/lib/units";
 import { catchFormSchema } from "@/lib/validation";
+import type { Visibility } from "@/lib/types";
 
-async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
+async function buildInputFromForm(
+  formData: FormData,
+  userId: number,
+): Promise<CatchInput> {
   const parsed = catchFormSchema.parse({
     species_name: formData.get("species_name"),
     length_value: formData.get("length_value") ?? undefined,
@@ -24,6 +28,7 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
     location: formData.get("location") ?? undefined,
     latitude: formData.get("latitude") ?? undefined,
     longitude: formData.get("longitude") ?? undefined,
+    visibility: formData.get("visibility") ?? undefined,
     bait: formData.get("bait") ?? undefined,
     notes: formData.get("notes") ?? undefined,
   });
@@ -47,6 +52,7 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
         : parsed.weight_value;
 
   return {
+    user_id: userId,
     species_id: species.id,
     species_name_snapshot: trimmedName,
     length_cm,
@@ -55,15 +61,17 @@ async function buildInputFromForm(formData: FormData): Promise<CatchInput> {
     location: parsed.location,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
+    visibility: parsed.visibility as Visibility,
     bait: parsed.bait,
     notes: parsed.notes,
   };
 }
 
 export async function createCatchAction(formData: FormData): Promise<void> {
-  await requireAuth();
-  const input = await buildInputFromForm(formData);
+  const user = await requireUser();
+  const input = await buildInputFromForm(formData, user.id);
   await insertCatch(input);
+  revalidatePath("/");
   revalidatePath("/catches");
   revalidatePath("/species");
   revalidatePath("/stats");
@@ -74,9 +82,10 @@ export async function updateCatchAction(
   id: number,
   formData: FormData,
 ): Promise<void> {
-  await requireAuth();
-  const input = await buildInputFromForm(formData);
-  await dbUpdateCatch(id, input);
+  const user = await requireUser();
+  const input = await buildInputFromForm(formData, user.id);
+  await dbUpdateCatch(id, user.id, input);
+  revalidatePath("/");
   revalidatePath("/catches");
   revalidatePath("/species");
   revalidatePath("/stats");
@@ -84,8 +93,9 @@ export async function updateCatchAction(
 }
 
 export async function deleteCatchAction(id: number): Promise<void> {
-  await requireAuth();
-  await dbDeleteCatch(id);
+  const user = await requireUser();
+  await dbDeleteCatch(id, user.id);
+  revalidatePath("/");
   revalidatePath("/catches");
   revalidatePath("/species");
   revalidatePath("/stats");

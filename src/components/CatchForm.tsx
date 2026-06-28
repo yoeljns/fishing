@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import type { CatchRow, Species } from "@/lib/types";
+import type { CatchRow, Species, Visibility } from "@/lib/types";
 import { cmToIn, kgToLb } from "@/lib/units";
 import { useUnits } from "./UnitToggle";
 import { reverseGeocodeAction } from "@/app/catches/geo-actions";
@@ -62,6 +62,9 @@ export function CatchForm({ species, action, initial }: Props) {
     "idle",
   );
   const [mapOpen, setMapOpen] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>(
+    initial?.visibility ?? "friends",
+  );
   const [, startTransition] = useTransition();
   const manualCoordsRef = useRef(false);
 
@@ -379,6 +382,47 @@ export function CatchForm({ species, action, initial }: Props) {
         />
       </div>
 
+      <div>
+        <span className={labelClass}>Who can see this catch</span>
+        <input type="hidden" name="visibility" value={visibility} />
+        <div
+          role="group"
+          aria-label="Visibility"
+          className="grid grid-cols-3 gap-2"
+        >
+          {(
+            [
+              { v: "private", label: "Private", hint: "Only me" },
+              { v: "friends", label: "Friends", hint: "My friends" },
+              { v: "public", label: "Public", hint: "Anyone" },
+            ] as { v: Visibility; label: string; hint: string }[]
+          ).map((opt) => {
+            const active = visibility === opt.v;
+            return (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setVisibility(opt.v)}
+                aria-pressed={active}
+                className={`rounded-md border px-3 py-2 text-left transition-colors duration-150 ${
+                  active
+                    ? "bg-brand-50 dark:bg-brand-900/30 border-brand-500 dark:border-brand-600"
+                    : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:border-brand-400"
+                }`}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <VisibilityIcon kind={opt.v} />
+                  {opt.label}
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {opt.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex justify-end gap-2">
         <button
           type="submit"
@@ -388,6 +432,32 @@ export function CatchForm({ species, action, initial }: Props) {
         </button>
       </div>
     </form>
+  );
+}
+
+function VisibilityIcon({ kind }: { kind: Visibility }) {
+  if (kind === "private") {
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    );
+  }
+  if (kind === "friends") {
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
   );
 }
 

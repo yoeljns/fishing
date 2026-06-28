@@ -1,10 +1,12 @@
 import { listSpeciesWithStats } from "@/lib/species";
+import { requireUser } from "@/lib/session";
 import { SpeciesChecklist } from "@/components/SpeciesChecklist";
 
 export const dynamic = "force-dynamic";
 
 export default async function SpeciesPage() {
-  const species = await listSpeciesWithStats();
+  const user = await requireUser();
+  const species = await listSpeciesWithStats(user.id);
 
   const waterTypes = Array.from(
     new Set(species.map((s) => s.water_type)),

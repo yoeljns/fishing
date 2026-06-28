@@ -9,16 +9,25 @@ import { Logo } from "./Logo";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/catches", label: "Catches" },
+  { href: "/friends", label: "Friends" },
   { href: "/forecast", label: "Forecast" },
   { href: "/species", label: "Species" },
   { href: "/stats", label: "Stats" },
 ];
 
-export function Nav() {
+type NavProps = {
+  username: string;
+  displayName: string | null;
+  pendingCount: number;
+};
+
+export function Nav({ username, displayName, pendingCount }: NavProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname?.startsWith(href);
+
+  const name = displayName || username;
 
   return (
     <>
@@ -27,10 +36,10 @@ export function Nav() {
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 min-w-0">
             <Link
               href="/"
-              className="flex items-center gap-2 text-brand-700 dark:text-brand-400 font-bold text-lg hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 text-brand-700 dark:text-brand-400 font-bold text-lg hover:opacity-80 transition-opacity shrink-0"
               aria-label="Fishing Journal home"
             >
               <Logo size={22} />
@@ -42,24 +51,35 @@ export function Nav() {
                   key={l.href}
                   href={l.href}
                   aria-current={isActive(l.href) ? "page" : undefined}
-                  className={`px-3 py-1.5 rounded-md transition-colors duration-150 ${
+                  className={`relative px-3 py-1.5 rounded-md transition-colors duration-150 ${
                     isActive(l.href)
                       ? "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"
                       : "text-slate-700 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   {l.label}
+                  {l.href === "/friends" && pendingCount > 0 ? (
+                    <Badge count={pendingCount} />
+                  ) : null}
                 </Link>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <UnitToggle />
             <ThemeToggle />
+            <Link
+              href={`/u/${username}`}
+              aria-label="Your profile"
+              title={`@${username}`}
+              className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 flex items-center justify-center text-sm font-bold uppercase hover:ring-2 hover:ring-brand-400 transition"
+            >
+              {name.slice(0, 1)}
+            </Link>
             <form action="/logout" method="post">
               <button
                 type="submit"
-                className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-2 py-1 transition-colors duration-150"
+                className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-1 py-1 transition-colors duration-150"
                 aria-label="Sign out"
               >
                 <SignOutIcon />
@@ -74,13 +94,13 @@ export function Nav() {
         className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-5 max-w-5xl mx-auto">
+        <div className="grid grid-cols-6 max-w-5xl mx-auto">
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               aria-current={isActive(l.href) ? "page" : undefined}
-              className={`flex flex-col items-center gap-1 py-2 text-xs transition-colors duration-150 ${
+              className={`relative flex flex-col items-center gap-1 py-2 text-[11px] transition-colors duration-150 ${
                 isActive(l.href)
                   ? "text-brand-700 dark:text-brand-400"
                   : "text-slate-500 dark:text-slate-400"
@@ -88,11 +108,22 @@ export function Nav() {
             >
               <MobileIcon name={l.href} active={!!isActive(l.href)} />
               <span>{l.label}</span>
+              {l.href === "/friends" && pendingCount > 0 ? (
+                <span className="absolute top-1 right-[18%] w-2 h-2 rounded-full bg-red-500" />
+              ) : null}
             </Link>
           ))}
         </div>
       </nav>
     </>
+  );
+}
+
+function Badge({ count }: { count: number }) {
+  return (
+    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold">
+      {count > 9 ? "9+" : count}
+    </span>
   );
 }
 
@@ -130,6 +161,15 @@ function MobileIcon({ name, active }: { name: string; active: boolean }) {
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M3 12 C 6 5, 16 5, 18 12 L 22 9 L 21 12 L 22 15 L 18 12 C 16 19, 6 19, 3 12 Z" />
         <circle cx="8" cy="11" r="0.8" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (name === "/friends") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     );
   }

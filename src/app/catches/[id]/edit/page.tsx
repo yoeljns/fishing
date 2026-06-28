@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatch } from "@/lib/catches";
 import { listSpecies } from "@/lib/species";
+import { requireUser } from "@/lib/session";
 import { CatchForm } from "@/components/CatchForm";
 import { CatchMapPreview } from "@/components/CatchMapPreview";
 import { updateCatchAction } from "../../actions";
@@ -13,11 +14,15 @@ export default async function EditCatchPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await requireUser();
   const { id: idStr } = await params;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
-  const [catchRow, species] = await Promise.all([getCatch(id), listSpecies()]);
+  const [catchRow, species] = await Promise.all([
+    getCatch(id, user.id),
+    listSpecies(),
+  ]);
   if (!catchRow) notFound();
 
   const action = updateCatchAction.bind(null, id);

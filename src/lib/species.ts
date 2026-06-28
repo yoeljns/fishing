@@ -10,7 +10,9 @@ export async function listSpecies(): Promise<Species[]> {
   return rows;
 }
 
-export async function listSpeciesWithStats(): Promise<SpeciesWithStats[]> {
+export async function listSpeciesWithStats(
+  userId: number,
+): Promise<SpeciesWithStats[]> {
   const { rows } = await sql<SpeciesWithStats>`
     SELECT
       s.id,
@@ -25,7 +27,7 @@ export async function listSpeciesWithStats(): Promise<SpeciesWithStats[]> {
       MAX(c.length_cm)::float8 AS max_length_cm,
       MAX(c.weight_kg)::float8 AS max_weight_kg
     FROM species s
-    LEFT JOIN catches c ON c.species_id = s.id
+    LEFT JOIN catches c ON c.species_id = s.id AND c.user_id = ${userId}
     GROUP BY s.id
     ORDER BY s.common_name ASC
   `;

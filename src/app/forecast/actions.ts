@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth } from "@/lib/session";
+import { requireUser } from "@/lib/session";
 import {
   forwardGeocode,
   forwardGeocodeMulti,
@@ -10,7 +10,7 @@ import {
 export async function forwardGeocodeAction(
   query: string,
 ): Promise<{ lat: number; lon: number; display_name: string } | null> {
-  await requireAuth();
+  await requireUser();
   const q = query.trim();
   if (q.length < 2) return null;
   return forwardGeocode(q);
@@ -19,7 +19,7 @@ export async function forwardGeocodeAction(
 export async function forwardGeocodeMultiAction(
   query: string,
 ): Promise<GeocodeCandidate[]> {
-  await requireAuth();
+  await requireUser();
   const q = query.trim();
   if (q.length < 2) return [];
   return forwardGeocodeMulti(q, 6);

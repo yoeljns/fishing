@@ -54,8 +54,36 @@ export const catchFormSchema = z.object({
   location: optionalString,
   latitude: optionalSignedNumber(-90, 90),
   longitude: optionalSignedNumber(-180, 180),
+  visibility: z.enum(["private", "friends", "public"]).default("friends"),
   bait: optionalString,
   notes: optionalString,
 });
 
 export type CatchFormInput = z.infer<typeof catchFormSchema>;
+
+export const signupSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be at most 20 characters")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "Letters, numbers, and underscores only",
+    ),
+  display_name: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(200),
+});
+
+export const loginSchema = z.object({
+  username: z.string().trim().min(1).max(40),
+  password: z.string().min(1).max(200),
+});

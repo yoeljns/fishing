@@ -30,6 +30,7 @@ export function CatchListItem({ catchRow, onDelete, isDeleting }: Props) {
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {catchRow.caught_on}
           </span>
+          <VisibilityBadge visibility={catchRow.visibility} />
         </div>
         <div className="text-sm text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1">
           <span>Length: {formatLength(catchRow.length_cm, units)}</span>
@@ -85,5 +86,30 @@ export function CatchListItem({ catchRow, onDelete, isDeleting }: Props) {
         )}
       </div>
     </li>
+  );
+}
+
+function VisibilityBadge({ visibility }: { visibility: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    private: {
+      label: "Private",
+      cls: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+    },
+    friends: {
+      label: "Friends",
+      cls: "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300",
+    },
+    public: {
+      label: "Public",
+      cls: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    },
+  };
+  const m = map[visibility] ?? map.friends;
+  return (
+    <span
+      className={`text-[10px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded ${m.cls}`}
+    >
+      {m.label}
+    </span>
   );
 }
